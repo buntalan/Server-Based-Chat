@@ -1,6 +1,88 @@
 package ServerClient;
+import java.net.*;
+import java.io.*;
+
+// Server will run on port 5180 for UDP and 5380 for TCP
 
 public class Server {
+	private DatagramSocket socketUDP; // UDP Socket for "Welcoming Server"
+	private static int udpPort = 5180;
+	private boolean running; // Boolean for looping connection
+	private byte[] buf = new byte[256]; // Size of byte buffer
+	
+	// Server constructor
+	// UDP Socket on (5180)
+	public Server() {
+		try {
+			socketUDP = new DatagramSocket(udpPort);
+		} catch (SocketException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void run() {
+		// Leave UDP connection on to receive connection requests.
+		// Acts as "Welcoming Server"
+		running = true;
+		while (running) {
+			// Create packet for receiveing data
+			DatagramPacket packet = new DatagramPacket(buf, buf.length);
+			
+			// Try to 'transfer' packet to socket for extraction
+			try {
+				socketUDP.receive(packet);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			// Extract information from datagram
+			InetAddress address = packet.getAddress();
+			int port = packet.getPort();
+			// Sends packet back to  client
+			// Will replace with sending CHALLENGE
+			packet = new DatagramPacket(buf, buf.length, address, port);
+			
+			// Evaluate response
+			String received = new String(packet.getData(), 0, packet.getLength());
+			
+			
+			// Depending on response received, we choose one of the following functions to run through.
+			// TODO: Fill in all the important functions, followed by 
+			// chat related functions.
+			// FIXME: Want to check if the switch-case may work instead.
+			if (received.equals("end")) {
+				running = false;
+				continue;
+			}
+//			switch(received) {
+//			case "HELLO":
+//				// Function
+//				break;
+//			case "end":
+//				// Close connections
+//				close();
+//				break;
+//			default:
+//				break;
+//			}
+			
+			// FIXME: For testing
+			System.out.println(received);
+			try {
+				socketUDP.send(packet);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		close();
+	}
+	
+	// Close UDP socket, block incoming chat requests
+	private void close() {
+		socketUDP.close();
+	}
+	
 	
 	/*IMPORTANT FUNCTIONS*/
 	public boolean CHALLENGE(int rand) {
