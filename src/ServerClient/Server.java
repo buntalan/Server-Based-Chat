@@ -1,90 +1,66 @@
 package ServerClient;
+
 import java.net.*;
 import java.io.*;
+import java.util.*;
+
 
 // Server will run on port 5180 for UDP and 5380 for TCP
 
 public class Server {
-	private DatagramSocket socketUDP; // UDP Socket for "Welcoming Server"
+	// For keeping list of clients
+	// TODO: Make function to fill in list of clients
+	// and their respective SubID, SubKey, rand_Cookie from txt file
+	// FIXME: Might not need to be static, note it.
+	static ArrayList<Client> listClient;
+	int[] listRandCookie;
+	// Variables required for UDP connection
+	private static DatagramSocket socketUDP; // UDP Socket for "Welcoming Server"
 	private static int udpPort = 5180;
-	private boolean running; // Boolean for looping connection
-	private byte[] buf = new byte[256]; // Size of byte buffer
+	private InetAddress address;
 	
 	// Server constructor
 	// UDP Socket on (5180)
-	public Server() {
-		try {
-			socketUDP = new DatagramSocket(udpPort);
-		} catch (SocketException e) {
-			e.printStackTrace();
-		}
+	public Server() throws Exception {
 	}
 	
-	public void run() {
-		// Leave UDP connection on to receive connection requests.
-		// Acts as "Welcoming Server"
+	/*************************
+	 * Main/Driver function  *
+	 ************************/
+	public static void main (String[] arg) throws Exception {
+		socketUDP = new DatagramSocket(udpPort); // Open UDP Socket on port 5180.
+		boolean running; // Boolean for looping connection
+		
+		// Variables for receiving datagrams from UDP
+		// TODO: May replace later with StringBuffer?
+		byte[] buf = new byte[1024]; // Size of byte buffer
+		DatagramPacket received = new DatagramPacket(buf, buf.length); // For receiving packets
+		
+		// Populate subscriber list
+		listClient = fillSubscriberList();
+		
+		// Will always be running
 		running = true;
+		
+		// ... forever.
 		while (running) {
-			// Create packet for receiveing data
-			DatagramPacket packet = new DatagramPacket(buf, buf.length);
+			// Receive packet
+			socketUDP.receive(received);
 			
-			// Try to 'transfer' packet to socket for extraction
-			try {
-				socketUDP.receive(packet);
-			} catch (IOException e) {
-				e.printStackTrace();
+			// Extract data
+			String clientMessage = new String(received.getData());
+			
+			if (clientMessage != null) {
+				System.out.println(clientMessage);
 			}
 			
-			// Extract information from datagram
-			InetAddress address = packet.getAddress();
-			int port = packet.getPort();
-			// Sends packet back to  client
-			// Will replace with sending CHALLENGE
-			packet = new DatagramPacket(buf, buf.length, address, port);
+			// TODO: Make client message
 			
-			// Evaluate response
-			String received = new String(packet.getData(), 0, packet.getLength());
-			
-			
-			// Depending on response received, we choose one of the following functions to run through.
-			// TODO: Fill in all the important functions, followed by 
-			// chat related functions.
-			// FIXME: Want to check if the switch-case may work instead.
-			if (received.equals("end")) {
-				running = false;
-				continue;
-			}
-//			switch(received) {
-//			case "HELLO":
-//				// Function
-//				break;
-//			case "end":
-//				// Close connections
-//				close();
-//				break;
-//			default:
-//				break;
-//			}
-			
-			// FIXME: For testing
-			System.out.println(received);
-			try {
-				socketUDP.send(packet);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
 		}
-		close();
 	}
+
 	
-	// Close UDP socket, block incoming chat requests
-	private void close() {
-		socketUDP.close();
-	}
-	
-	
-	/*IMPORTANT FUNCTIONS*/
+	/*CONNECTION FUNCTIONS*/
 	public boolean CHALLENGE(int rand) {
 		// TODO: Sent by server to challenge client to authenticate self. New rand generated every challenge.
 		return true; // FIXME: Need to return proper value, or return earlier.
@@ -102,6 +78,61 @@ public class Server {
 		// TODO: Sent by the server to notify the client it has been connected.
 	}
 	
+	/*CHAT FUNCTIONS*/
+	
+	
 	/*Everything Else*/
 	
+	// Test subscriber fill
+	private static void subscriberFillTest() {
+		// Test list of subscribers
+		for (int i = 0; i < listClient.size(); i++) {
+			System.out.println(listClient.get(i).getClient_ID() + " " + listClient.get(i).getKey());
+		}
+	}
+	
+	// Fill subscriber list
+	public static ArrayList<Client> fillSubscriberList() throws IOException, Exception {
+		ArrayList<Client> clientList;
+		clientList = new ArrayList<Client>();
+		String temp;
+		String[] tokens;
+		
+		FileInputStream in = null;
+		BufferedReader reader = null;
+		
+		// Open input stream and fill subscriber list
+		try {
+			// Place "subscribers.txt" in project folder.
+			in = new FileInputStream("subscribers.txt"); // Read in from file subscribers.txt
+			reader = new BufferedReader(new InputStreamReader(in));
+			
+			int i = 0;
+			temp = reader.readLine();
+			while (temp != null) {
+				// Instantiate new client to add to ArrayList of Clients
+				Client client = new Client();
+				
+				// Add information about client.
+				// FIXME: Finish adding client secret key
+				tokens = temp.split("\\W+");
+				client.setClient_ID(tokens[0]);
+				client.setKey(Integer.parseInt(tokens[1]));
+				
+				// Add object to list
+				clientList.add(client);
+				
+				// Go on to next line
+				temp = reader.readLine();
+			}
+		}
+		finally {
+			if (in != null) {
+				in.close();
+				reader.close();
+			}
+		}
+		
+		return clientList;
+	}
 }
