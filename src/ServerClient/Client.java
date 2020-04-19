@@ -3,6 +3,7 @@ package ServerClient;
 import java.net.*;
 import java.io.*;
 import java.util.*;
+import java.security.*;
 
 // Server and client will work with port 5180 for UDP and 5380 for TCP
 
@@ -12,10 +13,14 @@ public class Client{
 	private static int udpPort = 5180;		// Port of Server
 	private InetAddress address;			// IP Address of Server
 	
+
+
 	// client_ID and k will be stored in the server
 	private String client_ID; 				// Client_ID
 	private int key; 						// Secret Key K
-	
+	private String CK_A;					// CK_A to decrypt/encrypt messages
+
+
 	// Buffer
 	private byte[] buf; 					// Buffer for sending/receiving datagrams
 	
@@ -44,10 +49,15 @@ public class Client{
 	public int getKey() {
 		return key;
 	}
-
+	
+	public String getCK_A() {
+		return CK_A;
+	}
+	
 	public byte[] getBuf() {
 		return buf;
 	}
+
 	
 	public void setSocket(DatagramSocket socket) {
 		this.socket = socket;
@@ -73,10 +83,13 @@ public class Client{
 		this.key = key;
 	}
 	
+	public void setCK_A(String cK_A) {
+		CK_A = cK_A;
+	}
+	
 	public void setBuf(byte[] buf) {
 		this.buf = buf;
 	}
-
 
 	
 	// Client Constructor
@@ -90,26 +103,30 @@ public class Client{
 		// Buffer bytes of client_ID
 		buf = client_ID.getBytes();
 		
-		// create packet with client_ID
+		// Create packet with client_ID
 		packet = new DatagramPacket(buf, buf.length, address, udpPort);
 		
 		// Send hello to server
 		socket.send(packet);
 	}
 
-	public void RESPONSE(String client_ID, int Res) {
-		// TODO: Response to challenge from server, authenticates self
-	}
-	
-	public void CONNECT(int rand_cookie) {
-		// TODO: Sends rand_cookie to server. Way to choose between chats maybe? 
+	public void RESPONSE(String client_ID, String Res, InetAddress address, int port) throws Exception {
+		// Response to challenge from server, authenticates self
+		buf = Res.getBytes();
+		packet = new DatagramPacket(buf, buf.length, address, port);
+		
+		// Send response to server
+		socket.send(packet);
 	}
 	
 	/*CHAT FUNCTIONS*/
+	public void CONNECT(int rand_cookie) {
+		// TODO: Sends rand_cookie to server. Way to authenticate with server when connecting
+	}
+	
 	
 	
 	/*Everything else*/
-	
 	
 	// Random ID between A-Z. 
 	private void randClientID() {
@@ -131,7 +148,7 @@ public class Client{
 		}
 		StringBuilder array = new StringBuilder();
 		int i = 0;
-		while (i < buf.length) {
+		while (i < buf.length && buf[i] != 0) {
 			array.append((char) buf[i]);
 			i++;
 		}
