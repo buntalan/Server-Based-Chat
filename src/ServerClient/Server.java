@@ -1,7 +1,9 @@
 package ServerClient;
 
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.io.*;
+import java.math.BigInteger;
 import java.util.*;
 
 
@@ -11,13 +13,15 @@ public class Server {
 	// For keeping list of clients
 	// TODO: Make function to fill in list of clients
 	// and their respective SubID, SubKey, rand_Cookie from txt file
-	// FIXME: Might not need to be static, note it.
+	// FIXME: Might not need to be static.
 	static ArrayList<Client> listClient;
 	int[] listRandCookie;
+	static int indexOfSearch;
+	
 	// Variables required for UDP connection
-	private static DatagramSocket socketUDP; // UDP Socket for "Welcoming Server"
-	private static int udpPort = 5180;
-	private InetAddress address;
+	static DatagramSocket socketUDP; // UDP Socket for "Welcoming Server"
+	static int udpPort = 5180;
+	InetAddress address;
 	
 	// Server constructor
 	// UDP Socket on (5180)
@@ -28,42 +32,114 @@ public class Server {
 	 * Main/Driver function  *
 	 ************************/
 	public static void main (String[] arg) throws Exception {
-		socketUDP = new DatagramSocket(udpPort); // Open UDP Socket on port 5180.
-		boolean running; // Boolean for looping connection
+		
+		String clientRequest = null; 				// Client Request
+		String response = null;						// Server response
+		boolean running;							// Boolean for looping connection
+		indexOfSearch = -1;							// Index of Search
+		
+		// Open socket for connection
+		socketUDP = new DatagramSocket(udpPort);	// Open UDP Socket on port 5180.
+		// FIXME: Commented out for debugging. Take out comments when done.
+		// socketUDP.setSoTimeout(1000);				// Timeout for 1000ms
 		
 		// Variables for receiving datagrams from UDP
 		// TODO: May replace later with StringBuffer?
-		byte[] buf = new byte[1024]; // Size of byte buffer
-		DatagramPacket received = new DatagramPacket(buf, buf.length); // For receiving packets
+		byte[] buf = new byte[65535]; 									// Size of byte buffer
+		DatagramPacket received = new DatagramPacket(buf, buf.length);	// For receiving packets
+		DatagramPacket outgoing;										// For outgoing packets
 		
 		// Populate subscriber list
 		listClient = fillSubscriberList();
+		
 		
 		// Will always be running
 		running = true;
 		
 		// ... forever.
 		while (running) {
-			// Receive packet
-			socketUDP.receive(received);
-			
-			// Extract data
-			String clientMessage = new String(received.getData());
-			
-			if (clientMessage != null) {
-				System.out.println(clientMessage);
+			try {
+				// Receive packet
+				socketUDP.receive(received);
+				
+				// Extract data
+				clientRequest = data(buf).toString();
+				
+				// FIXME: For testing
+				System.out.println(clientRequest);
+				
+				// Search subscriber list for matching Client-ID
+				// if clientMessage is not null
+				// This implies a received UDP Datagram.
+				if (!clientRequest.isEmpty()) {
+					for (int i = 0; i < listClient.size(); i++) {
+						// If client is found, stop and take index
+						if (clientRequest.equals(listClient.get(i).getClient_ID())) {
+							indexOfSearch = i;
+							break;
+						}
+					}
+					
+					if (indexOfSearch != -1) {
+						// TODO: Run CHALLENGE
+						int rand = (int)(Math.random()*((100)+1));  // Num generated between [0, 100]
+						
+						
+					}
+					else {
+						// Send "Subscriber not found" Message
+						// FIXME: Buffer refresh may be redundant. Might delete later.
+						buf = new byte[65535]; 
+						response = "FFFF";
+						buf = response.getBytes();
+						
+						// Make Datagram and send out to client
+						outgoing = new DatagramPacket(buf, buf.length, received.getAddress(), received.getPort());
+						
+						socketUDP.send(outgoing);
+					}
+					
+					
+					// Reset clientMessage and indexOfSearch for more connection attempts
+					clientRequest = null;
+					indexOfSearch = -1;
+					
+					// Must clear buffer
+					buf = new byte[65535];
+				}
 			}
+			catch (SocketTimeoutException e) {
+                // Timeout Reached
+                // System.out.println("Timeout reached or no incoming connections." + e);
+            }
+			
 			
 			// TODO: Make client message
 			
 		}
+		
+		// Close socket if loop ends
+		socketUDP.close();
 	}
 
 	
 	/*CONNECTION FUNCTIONS*/
-	public boolean CHALLENGE(int rand) {
+	public boolean CHALLENGE(int rand, int index, InetAddress address, int port) throws Exception {
 		// TODO: Sent by server to challenge client to authenticate self. New rand generated every challenge.
-		return true; // FIXME: Need to return proper value, or return earlier.
+		String XRES = rand + listClient.get(index).getKey() + "";
+		DatagramPacket packet;
+		
+		// Convert rand to bytes
+		String temp = rand + "";
+		byte[] array = temp.getBytes();
+		
+		// Send out packet
+		packet = new DatagramPacket(array, array.length, address, port);
+		socketUDP.send(packet);
+		
+		
+		// FIXME: Return something we may use.
+		return true;
 	}
 	
 	public void AUTH_SUCCESS(int rand_cookie, int port_number) {
@@ -91,7 +167,7 @@ public class Server {
 		}
 	}
 	
-	// Fill subscriber list
+	// Utility function for filling subscriber list
 	public static ArrayList<Client> fillSubscriberList() throws IOException, Exception {
 		ArrayList<Client> clientList;
 		clientList = new ArrayList<Client>();
@@ -134,5 +210,20 @@ public class Server {
 		}
 		
 		return clientList;
+	}
+	
+	// Utility method for converting byte 
+	// array data into String representation.
+	public static StringBuilder data(byte[] buf) {
+		if (buf == null) {
+			return null;
+		}
+		StringBuilder array = new StringBuilder();
+		int i = 0;
+		while (i < buf.length && buf[i] != 0) {
+			array.append((char) buf[i]);
+			i++;
+		}
+		return array;
 	}
 }
