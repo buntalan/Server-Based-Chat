@@ -118,11 +118,12 @@ public class Client{
 		// Send response to server
 		socket.send(packet);
 	}
-	
-	/*CHAT FUNCTIONS*/
+
 	public void CONNECT(int rand_cookie) {
 		// TODO: Sends rand_cookie to server. Way to authenticate with server when connecting
 	}
+	
+	/*CHAT FUNCTIONS*/
 	
 	
 	
