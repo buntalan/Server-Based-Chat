@@ -3,7 +3,6 @@ package ServerClient;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.io.*;
-import java.math.BigInteger;
 import java.util.*;
 import java.security.*;
 
@@ -16,7 +15,6 @@ public class Server {
 	// and their respective SubID, SubKey, rand_Cookie from txt file
 	// FIXME: Might not need to be static.
 	static ArrayList<Client> listClient;
-	int[] listRandCookie;
 	static int indexOfSearch;
 	
 	// Variables required for UDP connection

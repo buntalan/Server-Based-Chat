@@ -1,7 +1,6 @@
 package ServerClient;
 
 import java.net.*;
-import java.security.MessageDigest;
 import java.util.*;
 
 public class ClientProgram {
@@ -25,6 +24,9 @@ public class ClientProgram {
 		client.setBuf(new byte[65535]);
 		client.setPacket(new DatagramPacket(client.getBuf(),
 				client.getBuf().length));
+		
+		// User has to log on
+		loggingOn();
 		
 		
 		/********************
@@ -84,7 +86,7 @@ public class ClientProgram {
 		}
 		
 	}
-	
+
 	
 	// AES test function
 	private static void testAES() {
@@ -98,5 +100,22 @@ public class ClientProgram {
 		System.out.println(originalString);
 		System.out.println(encryptedString);
 		System.out.println(decryptedString);
+	}
+	
+	// Function for allowing user to log on
+	private static void loggingOn() {
+		// User has to "log on"
+		boolean loggingOn = true;
+		String userInput;
+		try (Scanner scanner = new Scanner(System.in)){
+			while (loggingOn) {
+				userInput = scanner.nextLine();
+				
+				if (userInput.equals("Log on")) {
+					loggingOn = false;
+				}
+			}
+			scanner.close();
+		}
 	}
 }
