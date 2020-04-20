@@ -5,7 +5,8 @@ import java.io.*;
 import java.util.*;
 import java.security.*;
 
-// Server and client will work with port 5180 for UDP and 5380 for TCP
+// Server and client will work with port 5180 for UDP.
+// Port will be assigned by server for TCP.
 
 public class Client{
 	private DatagramSocket socket;			// UDP Socket
@@ -13,19 +14,27 @@ public class Client{
 	private static int udpPort = 5180;		// Port of Server
 	private InetAddress address;			// IP Address of Server
 	
-
-
+	private Socket clientSocket;			// TCP Client Socket
+	private int tcpPort;					// TCP Port
+	private PrintWriter out;				// Output PrintWriter
+	private BufferedReader in;				// Read in from Buffered
+											// from server
+	
+	
 	// client_ID and k will be stored in the server
 	private String client_ID; 				// Client_ID
 	private int key; 						// Secret Key K
 	private String CK_A;					// CK_A to decrypt/encrypt messages
-
-
+	private int cookie;						// Cookie sent from server
+	
+	
 	// Buffer
 	private byte[] buf; 					// Buffer for sending/receiving datagrams
 	
 	
+
 	// Getters and Setters
+	// UDP
 	public DatagramSocket getSocket() {
 		return socket;
 	}
@@ -52,6 +61,10 @@ public class Client{
 	
 	public String getCK_A() {
 		return CK_A;
+	}
+
+	public int getCookie() {
+		return cookie;
 	}
 	
 	public byte[] getBuf() {
@@ -87,10 +100,46 @@ public class Client{
 		CK_A = cK_A;
 	}
 	
+	public void setCookie(int cookie) {
+		this.cookie = cookie;
+	}
+	
 	public void setBuf(byte[] buf) {
 		this.buf = buf;
 	}
+	
+	// TCP
+	public Socket getClientSocket() {
+		return clientSocket;
+	}
 
+	public int getTcpPort() {
+		return tcpPort;
+	}
+
+	public PrintWriter getOut() {
+		return out;
+	}
+
+	public BufferedReader getIn() {
+		return in;
+	}
+
+	public void setClientSocket(Socket clientSocket) {
+		this.clientSocket = clientSocket;
+	}
+
+	public void setTcpPort(int tcpPort) {
+		this.tcpPort = tcpPort;
+	}
+
+	public void setOut(PrintWriter out) {
+		this.out = out;
+	}
+
+	public void setIn(BufferedReader in) {
+		this.in = in;
+	}
 	
 	// Client Constructor
 	public Client() throws Exception {
@@ -121,6 +170,7 @@ public class Client{
 
 	public void CONNECT(int rand_cookie) {
 		// TODO: Sends rand_cookie to server. Way to authenticate with server when connecting
+		
 	}
 	
 	/*CHAT FUNCTIONS*/
