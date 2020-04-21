@@ -2,6 +2,7 @@ package ServerClient;
 
 import java.net.*;
 import java.util.*;
+import java.io.*;
 
 public class ClientProgram {
 	public static void main (String[] args) throws Exception {
@@ -26,7 +27,8 @@ public class ClientProgram {
 				client.getBuf().length));
 		
 		// User has to log on
-		loggingOn();
+		// FIXME: Comment out for debugging
+		// loggingOn();
 		
 		
 		/********************
@@ -35,7 +37,7 @@ public class ClientProgram {
 		
 		// Establish Connection
 		client.HELLO(client.getClient_ID());
-
+		
 		// Receive response for HELLO
 		client.setBuf(new byte[65535]);
 		client.setPacket(new DatagramPacket(client.getBuf(), client.getBuf().length));
@@ -72,6 +74,29 @@ public class ClientProgram {
 			else {
 				System.out.println("Authentication successful!");
 				client.setCK_A(AES.decrypt(received, String.valueOf(client.getKey())));
+				
+				// Receive rand_cookie for use in CONNECT
+				client.setBuf(new byte[65535]);
+				client.setPacket(new DatagramPacket(client.getBuf(), client.getBuf().length));
+				client.getSocket().receive(client.getPacket());
+				received = Client.data(client.getBuf()).toString();
+				
+				// Set rand_cookie for client
+				client.setCookie(Integer.valueOf(received));
+				
+				// Receive TCP port
+				client.setBuf(new byte[65535]);
+				client.setPacket(new DatagramPacket(client.getBuf(), client.getBuf().length));
+				client.getSocket().receive(client.getPacket());
+				received = Client.data(client.getBuf()).toString();
+				
+				// Set TCP port for client
+				client.setTcpPort(Integer.valueOf(received));
+				
+				// Establish TCP connection with Server
+				client.setClientSocket(new Socket(InetAddress.getLocalHost(), client.getTcpPort()));
+				client.setOut(new PrintWriter(client.getClientSocket().getOutputStream(), true));
+				client.setIn(new BufferedReader(new InputStreamReader(client.getClientSocket().getInputStream())));
 			}
 		}
 		
