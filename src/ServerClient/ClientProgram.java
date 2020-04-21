@@ -2,6 +2,7 @@ package ServerClient;
 
 import java.net.*;
 import java.util.*;
+import java.io.*;
 
 public class ClientProgram {
 	public static void main (String[] args) throws Exception {
@@ -27,7 +28,7 @@ public class ClientProgram {
 		
 		// User has to log on
 		// FIXME: Comment out for debugging
-		loggingOn();
+		// loggingOn();
 		
 		
 		/********************
@@ -93,7 +94,9 @@ public class ClientProgram {
 				client.setTcpPort(Integer.valueOf(received));
 				
 				// Establish TCP connection with Server
-				
+				client.setClientSocket(new Socket(InetAddress.getLocalHost(), client.getTcpPort()));
+				client.setOut(new PrintWriter(client.getClientSocket().getOutputStream(), true));
+				client.setIn(new BufferedReader(new InputStreamReader(client.getClientSocket().getInputStream())));
 			}
 		}
 		

@@ -174,8 +174,21 @@ public class Client{
 	}
 	
 	/*CHAT FUNCTIONS*/
+	public void CHAT_REQUEST (String clientID) {
+		// TODO: Sent by client to the server to request a chat session with 
+	}
 	
+	public void END_REQUEST (String sessionID) {
+		// TODO: Sent by client A to server to request a chat session with Client B
+	}
 	
+	public void CHAT (String sessionID, String message) {
+		// TODO: Send message to client, carried by server
+	}
+	
+	public void HISTORY (String clientID) {
+		// TODO: Request history of chat with clientID from server
+	}
 	
 	/*Everything else*/
 	
@@ -185,7 +198,6 @@ public class Client{
 		Random rnd = new Random();
 		
 		// This returns String of randomly chosen character index of chars
-		// TODO: There might be a better way of doing this. 
 		// Slight chance of UserID replicant. 
 		setClient_ID(String.valueOf(chars.charAt(rnd.nextInt(chars.length()))));
 	}

@@ -210,6 +210,14 @@ public class Server {
 		packet = new DatagramPacket(buffer, buffer.length, address, portUDP);
 		socketUDP.send(packet);
 		
+		// Accept TCP connection request as well as
+		// open input/output stream to that client.
+		// FIXME: Might not be implemented correctly. Connect to client
+		listClient.get(index).setClientSocket(socketTCP.accept());
+		listClient.get(index).setOut(new PrintWriter(listClient.get(index).getClientSocket().getOutputStream(), true));
+		listClient.get(index).setIn(new BufferedReader(new InputStreamReader(listClient.get(index).getClientSocket().getInputStream())));
+		
+		
 		// TODO: Update list of ports for TCP connection
 		
 	}
@@ -226,6 +234,9 @@ public class Server {
 	}
 	
 	/*CHAT FUNCTIONS*/
+	public void CHAT_STARTED(String sessionID, String ClientID) {
+		
+	}
 	
 	/*Everything Else*/
 	
