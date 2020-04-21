@@ -3,12 +3,11 @@ package ServerClient;
 import java.net.*;
 import java.io.*;
 import java.util.*;
-import java.security.*;
 
 // Server and client will work with port 5180 for UDP.
 // Port will be assigned by server for TCP.
 
-public class Client{
+public class Client extends Thread {
 	private DatagramSocket socket;			// UDP Socket
 	private DatagramPacket packet;			// UDP Packet
 	private static int udpPort = 5180;		// Port of Server
@@ -19,6 +18,10 @@ public class Client{
 	private PrintWriter out;				// Output PrintWriter
 	private BufferedReader in;				// Read in from Buffered
 											// from server
+	
+	// Flags to indicate if online and if in chat
+	boolean online = false;
+	boolean inChat = false;
 	
 	
 	// client_ID and k will be stored in the server
@@ -145,6 +148,38 @@ public class Client{
 	public Client() throws Exception {
 	}
 	
+	// TODO: Finish this run() for when the program is called by thread
+	@Override
+	public void run() {
+		String received;
+		while (true) {
+			try {
+				// Received takes in a line from BufferedReader
+				received = in.readLine();
+				
+				if (received.equals("Log off")) {
+					this.online = false;
+					this.inChat = false;
+					getClientSocket().close();
+				}
+				else if (received.equals(String.valueOf(this.cookie))){
+					// Send user CONNECTED! and make online. 
+					Server.CONNECTED(out);
+					this.online = true;
+				}
+				else {
+					// TODO: Add every other if/else case.
+					if (true) {
+						
+					}
+				}
+				
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+		}
+	}
 	
 	/*CONNECTION FUNCTIONS*/
 	public void HELLO(String client_ID) throws Exception {
@@ -169,8 +204,8 @@ public class Client{
 	}
 
 	public void CONNECT(int rand_cookie) {
-		// TODO: Sends rand_cookie to server. Way to authenticate with server when connecting
-		
+		// Sends rand_cookie to server. Way to authenticate with server when connecting
+		out.println(String.valueOf(rand_cookie));
 	}
 	
 	/*CHAT FUNCTIONS*/

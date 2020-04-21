@@ -6,6 +6,7 @@ import java.io.*;
 
 public class ClientProgram {
 	public static void main (String[] args) throws Exception {
+		Scanner in = new Scanner(System.in);
 		String received = null;
 		String response = null;
 		boolean running;
@@ -97,6 +98,13 @@ public class ClientProgram {
 				client.setClientSocket(new Socket(InetAddress.getLocalHost(), client.getTcpPort()));
 				client.setOut(new PrintWriter(client.getClientSocket().getOutputStream(), true));
 				client.setIn(new BufferedReader(new InputStreamReader(client.getClientSocket().getInputStream())));
+				
+				// Print that TCP connection is successful
+				System.out.println("Connection successful");
+				
+				// Send out connect request to server
+				client.CONNECT(client.getCookie());
+				
 			}
 		}
 		
@@ -104,10 +112,15 @@ public class ClientProgram {
 		 * Chat Phase *
 		 *************/
 		
+		
+		
 		// Always running to catch responses
 		running = true;
 		while (running) {
+			// Prompt user on what to do next
+			response = in.nextLine();
 			
+			client.getOut().println(response);
 		}
 		
 	}
