@@ -30,7 +30,12 @@ public class Client extends Thread {
 	private String CK_A;					// CK_A to decrypt/encrypt messages
 	private int cookie;						// Cookie sent from server
 	
+	// SessionID
+	private String sessionID = null;		// sessionID of chat client is in
+	private static int numChats = 0;		// Number of active chats and also the assigned
+											// sessionID of new chats
 	
+
 	// Buffer
 	private byte[] buf; 					// Buffer for sending/receiving datagrams
 	
@@ -128,6 +133,10 @@ public class Client extends Thread {
 		return in;
 	}
 
+	public String getSessionID() {
+		return sessionID;
+	}
+	
 	public void setClientSocket(Socket clientSocket) {
 		this.clientSocket = clientSocket;
 	}
@@ -144,11 +153,16 @@ public class Client extends Thread {
 		this.in = in;
 	}
 	
+	public void setSessionID(String sessionID) {
+		this.sessionID = sessionID;
+	}
+	
 	// Client Constructor
 	public Client() throws Exception {
 	}
 	
 	// TODO: Finish this run() for when the program is called by thread
+	// This is the part that talks to the client from the server! 
 	@Override
 	public void run() {
 		String received;
@@ -157,21 +171,79 @@ public class Client extends Thread {
 				// Received takes in a line from BufferedReader
 				received = in.readLine();
 				
+				// Decrypt message
+				received = AES.decrypt(received, this.CK_A);
+				
+				// FIXME: Just testing this.
+				System.out.println(received);
+				
+				// Log off
 				if (received.equals("Log off")) {
 					this.online = false;
 					this.inChat = false;
+					this.setSessionID(null);
 					getClientSocket().close();
 				}
+				// Send CONNECTED
 				else if (received.equals(String.valueOf(this.cookie))){
 					// Send user CONNECTED! and make online. 
-					Server.CONNECTED(out);
+					Server.CONNECTED(this.out, this.CK_A);
 					this.online = true;
 				}
-				else {
-					// TODO: Add every other if/else case.
-					if (true) {
+				// Received END_NOTIF
+				else if (received.matches("!!!! \\d+")) {
+					String[] tokens = received.split("\\W+");
+					
+					Server.END_NOTIF(tokens[1]);
+				}
+				// Received CHAT_REQUEST, search for and start chat with Client B
+				else if (received.matches("Chat [A-Za-z]+")) {
+					// CHAT_STARTED and UNREACHABLE
+					String[] tokens = received.split("\\W+");
+					
+					if (isFoundAndAvail(tokens[1])) {
+						// TODO: Add CHAT_STARTED
+						// Set inChat to true. The clientHandler is now set to online.
+						this.inChat = true;
 						
+						// CHAT_STARTED
+						Server.CHAT_STARTED(String.valueOf(numChats++), this.client_ID, tokens[1], this.CK_A);
 					}
+					else {
+						// Send out UNREACHABLE if Client could not be found
+						Server.UNREACHABLE(tokens[1], this.out, this.CK_A);
+					}
+				}
+				// Received CHAT
+				// Message broken into SessionID@!clientID@!message
+				// Broken up with @!
+				else if (received.matches("[0-9]+@!\\w+@!.*")){
+					// Split message into tokens
+					String[] tokens = received.split("@!+");
+					
+					// Search through listClients for other participating user
+					for (int i = 0; i < Server.listClient.size(); i++) {
+						// Find clientID of other user.
+						
+						// If client has matchingID, is NOT the client who just sent the message, is online, and is inChat, send message.
+						if (Server.listClient.get(i).getSessionID() != null
+								&& Server.listClient.get(i).getSessionID().equals(tokens[0]) 
+								&& (Server.listClient.get(i).getClient_ID().equals(this.client_ID) == false)
+								&& (Server.listClient.get(i).online == true) && (Server.listClient.get(i).inChat == true)) {
+							// Encrypt and send message to other user
+							Server.listClient.get(i).getOut().println(AES.encrypt(tokens[1] +
+									": " + tokens[2], Server.listClient.get(i).getCK_A()));
+							
+							// Save to message history
+							History.save(this.client_ID, Server.listClient.get(i).getClient_ID(), tokens[2]);
+							break;
+						}
+					}
+				}
+				// HISTORY_RESP
+				else if (received.matches("History [A-Za-z]+")) {
+					String[] tokens = received.split("\\s+");
+					Server.HISTORY_RESP(this.client_ID, tokens[1], this.out, this.CK_A);
 				}
 				
 			} catch (IOException e) {
@@ -205,24 +277,39 @@ public class Client extends Thread {
 
 	public void CONNECT(int rand_cookie) {
 		// Sends rand_cookie to server. Way to authenticate with server when connecting
-		out.println(String.valueOf(rand_cookie));
+		out.println(AES.encrypt(String.valueOf(rand_cookie), this.CK_A));
 	}
 	
 	/*CHAT FUNCTIONS*/
 	public void CHAT_REQUEST (String clientID) {
-		// TODO: Sent by client to the server to request a chat session with 
+		// TODO: Sent by client to the server to request a chat session with
+		// Caught bug "Chat" is supposed to be "Chat "
+		// Double check sent Strings
+		String temp = "Chat " + clientID;
+		out.println(AES.encrypt(temp, this.CK_A));
 	}
 	
 	public void END_REQUEST (String sessionID) {
 		// TODO: Sent by client A to server to request a chat session with Client B
+		// Turn off false flag.
+		this.inChat = false;
+		out.println(AES.encrypt("!!!! " + sessionID, this.CK_A));
 	}
 	
 	public void CHAT (String sessionID, String message) {
 		// TODO: Send message to client, carried by server
+		if (sessionID != null) {
+			// Create message template
+			String temp = sessionID + "@!" + getClient_ID() + "@!" + message;
+			
+			// Send message to server
+			out.println(AES.encrypt(temp, this.CK_A));
+		}
 	}
 	
-	public void HISTORY (String clientID) {
-		// TODO: Request history of chat with clientID from server
+	public void HISTORY_REQ (String clientID) {
+		// Request history of chat with clientID from server
+		out.println(AES.encrypt("History " + clientID, this.CK_A));
 	}
 	
 	/*Everything else*/
@@ -252,4 +339,20 @@ public class Client extends Thread {
 		}
 		return array;
 	}
+	
+	// For checking if the other client may be found in the listClient ArrayList
+	public static boolean isFoundAndAvail (String clientID) {
+		// Search through and return true if clientID is found in listClient
+		for (int i = 0; i < Server.listClient.size(); i++) {
+			if (clientID.equals(Server.listClient.get(i).getClient_ID()) && (Server.listClient.get(i).online == true)
+					&& (Server.listClient.get(i).inChat == false)) {
+				// Return true when found && online && not inChat
+				return true;
+			}
+		}
+		
+		// Return false if not found
+		return false;
+	}
+	
 }

@@ -16,7 +16,6 @@ public class Server {
 	// Adding list of active users
 	// FIXME: Might not need to be static.
 	static ArrayList<Client> listClient;
-	static ArrayList<Client> activeClients = new ArrayList<>();
 	static int indexOfSearch;
 	
 	// Variables required for UDP connection
@@ -62,7 +61,6 @@ public class Server {
 		
 		
 		// Variables for receiving datagrams from UDP
-		// TODO: May replace later with StringBuffer?
 		byte[] buf = new byte[65535]; 									// Size of byte buffer
 		DatagramPacket received = new DatagramPacket(buf, buf.length);	// For receiving packets
 		DatagramPacket outgoing;										// For outgoing packets
@@ -104,11 +102,11 @@ public class Server {
 						
 						// AUTH_SUCCESS or AUTH_FAIL depending on if subscriber passes authentication
 						if (CHALLENGE(rand, indexOfSearch, received.getAddress(), received.getPort())) {
-							// TODO: Run AUTH_SUCCESS here
+							// Run AUTH_SUCCESS here
 							AUTH_SUCCESS(randNum(0, 1000), tcpPort, received.getAddress(), received.getPort(), listClient.get(indexOfSearch).getKey(), indexOfSearch);
 						}
 						else {
-							// TODO: Run AUTH_FAIL here
+							// Run AUTH_FAIL here
 							AUTH_FAIL(received.getAddress(), received.getPort());
 						}
 					}
@@ -130,17 +128,15 @@ public class Server {
 					clientRequest = null;
 					indexOfSearch = -1;
 					
-					// Must clear buffer
+					// Must clear buffer and create new receiving Datagram
 					buf = new byte[65535];
+					received = new DatagramPacket(buf, buf.length);
 				}
 			}
 			catch (SocketTimeoutException e) {
                 // Timeout Reached
                 // System.out.println("Timeout reached or no incoming connections." + e);
             }
-			
-			
-			// TODO: Make client message. Handle Chat Phase here.
 		}
 		
 		// Close socket if loop ends
@@ -151,7 +147,7 @@ public class Server {
 	
 	/*CONNECTION FUNCTIONS*/
 	public static boolean CHALLENGE(int rand, int index, InetAddress address, int port) throws Exception {
-		// TODO: Sent by server to challenge client to authenticate self. New rand generated every challenge.
+		// Sent by server to challenge client to authenticate self. New rand generated every challenge.
 		String XRES = null;
 		String RES = null;
 		DatagramPacket packet;
@@ -196,7 +192,7 @@ public class Server {
 		listClient.get(indexOfSearch).setCookie(rand_cookie);
 		listClient.get(indexOfSearch).setTcpPort(port_number);
 		
-		// FIXME: May not be implementing correctly
+		// FIXME: May need to encrypt the other packets being sent here as well.
 		// Send over CK_A, encrypting it with subscriber's secretKey
 		// Future transfers will use CK_A
 		byte[] buffer = AES.encrypt(clientCK_A, String.valueOf(secretKey)).getBytes();
@@ -215,7 +211,6 @@ public class Server {
 		
 		// Accept TCP connection request as well as
 		// open input/output stream to that client.
-		// FIXME: Might not be implemented correctly. Connect to client
 		// Using client handler for multiple threads. This section may not be
 		// necessary. 
 		listClient.get(index).setClientSocket(socketTCP.accept());
@@ -225,8 +220,8 @@ public class Server {
 		// Start new thread for this connection
 		Thread thread = new Thread(listClient.get(index));
 		
-		// Add client to activeClients, and start thread
-		activeClients.add(listClient.get(index));
+		// Add client to active clients, and start thread
+		listClient.get(index).online = true;
 		thread.start();
 	}
 	
@@ -237,32 +232,63 @@ public class Server {
 		socketUDP.send(packet);
 	}
 	
-	public static void CONNECTED(PrintWriter out) {
+	public static void CONNECTED(PrintWriter out, String CK_A) {
 		// Sent by the server to notify the client it has been connected.
-		out.println("Connected!");
+		out.println(AES.encrypt("Connected!", CK_A));
 	}
 	
 	/*CHAT FUNCTIONS*/
-	public static void CHAT_STARTED(String sessionID, String ClientID) {
-		// TODO: Sent by server to notify client A has started a chat session with client B.
+	public static void CHAT_STARTED(String sessionID, String ClientIDA, String ClientIDB, String CK_AA) throws IOException {
+		// Sent by server to notify client A has started a chat session with client B.
 		// SessionID is the ID for the session
+		// Search for ClientA and notify user that they are connected in a chat.
+		for (int i = 0; i < listClient.size(); i++) {
+			if (listClient.get(i).getClient_ID().equals(ClientIDA)) {
+				listClient.get(i).setSessionID(sessionID);
+				listClient.get(i).getOut().println(AES.encrypt("You are now chatting with " + ClientIDB + "!", CK_AA));
+				listClient.get(i).getOut().println(AES.encrypt("You are in session " + sessionID + ".", CK_AA));
+				listClient.get(i).inChat = true;
+				break;
+			}
+		}
+		
+		// Search for ClientB and notify user that they are connected in a chat
+		for (int i = 0; i < listClient.size(); i++) {
+			if (listClient.get(i).getClient_ID().equals(ClientIDB)) {
+				listClient.get(i).setSessionID(sessionID);
+				listClient.get(i).getOut().println(AES.encrypt("You are now chatting with " + ClientIDA + "!", listClient.get(i).getCK_A()));
+				listClient.get(i).getOut().println(AES.encrypt("You are in session " + sessionID + ".", listClient.get(i).getCK_A()));
+				listClient.get(i).inChat = true;
+				break;
+				// listClient.get(i).getIn().read(AES.encrypt("You are now chatting with " + ClientIDA + "!", CK_AA).toCharArray());
+			}
+		}
 	}
 	
-	public static void UNREACHABLE(String cliendID) {
-		// TODO: Sent by the server to client A to notify client B is not avialable
+	public static void UNREACHABLE(String clientID, PrintWriter out, String CK_A) {
+		// Sent by the server to client A to notify client B is not available
 		// for a chat
+		out.println(AES.encrypt(clientID + " is not available.", CK_A));
 	}
 	
 	public static void END_NOTIF(String sessionID) {
-		// TODO: Sent by server to notify a client involved in teh session that
+		// Sent by server to notify a client involved in the session that
 		// the session has been terminated by a client
+		for (int i = 0; i < listClient.size(); i++) {
+			if (listClient.get(i).getSessionID() != null &&
+					listClient.get(i).getSessionID().equals(sessionID) && listClient.get(i).inChat == true) {
+				listClient.get(i).getOut().println(AES.encrypt("Chat ended", listClient.get(i).getCK_A()));
+				listClient.get(i).inChat = false;
+			}
+		}
 	}
 	
-	public static void HISTORY_RESP(String clientID) {
-		// TODO: Sent by server to client who requested the history. Sending clientID of
+	public static void HISTORY_RESP(String clientIDA, String clientIDB, PrintWriter out, String CK_A) throws IOException {
+		// Sent by server to client who requested the history. Sending clientID of
 		// the ID of the client who sent the chat message, and chat message is the chat
 		// message in history. 
 		// One HISTORY_RESP for every message in the chat history. 
+		History.load(clientIDA, clientIDB, out, CK_A);
 	}
 	
 	/*Everything Else*/
@@ -297,7 +323,6 @@ public class Server {
 				Client client = new Client();
 				
 				// Add information about client.
-				// FIXME: Finish adding client secret key
 				tokens = temp.split("\\W+");
 				client.setClient_ID(tokens[0]);
 				client.setKey(Integer.parseInt(tokens[1]));
