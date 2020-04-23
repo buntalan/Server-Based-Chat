@@ -9,16 +9,18 @@ public class ClientProgram {
 		Scanner in = new Scanner(System.in);
 		String received = null;
 		String response = null;
-		boolean running;
 		
 		// Create client instance
 		Client client = new Client();
 		client.setSocket(new DatagramSocket());
+		// Set address to local host when testing
 		client.setAddress(InetAddress.getLocalHost());
 				
 		// FIXME: Setting custom Client_ID and key for testing
-		client.setClient_ID("A");
-		client.setKey(4);
+		// Normally A and 4 for testing
+		System.out.println("Enter clientID, then Key");
+		client.setClient_ID(in.nextLine());
+		client.setKey(Integer.valueOf(in.nextLine()));
 		
 		// Set up ClientProgram for receiving data UDP Datagrams
 		// FIXME: Uncomment when done debugging.
@@ -27,10 +29,8 @@ public class ClientProgram {
 		client.setPacket(new DatagramPacket(client.getBuf(),
 				client.getBuf().length));
 		
-		// User has to log on
-		// FIXME: Comment out for debugging
-		// loggingOn();
-		
+		// History
+		ArrayList<History> history = new ArrayList<>();
 		
 		/********************
 		 * Connection Phase *
@@ -98,13 +98,15 @@ public class ClientProgram {
 				client.setClientSocket(new Socket(InetAddress.getLocalHost(), client.getTcpPort()));
 				client.setOut(new PrintWriter(client.getClientSocket().getOutputStream(), true));
 				client.setIn(new BufferedReader(new InputStreamReader(client.getClientSocket().getInputStream())));
-				
+
 				// Print that TCP connection is successful
-				System.out.println("Connection successful");
+				System.out.println("Connection successful.");
+				client.getOut().println(AES.encrypt("Working on this end!", client.getCK_A()));
 				
 				// Send out connect request to server
-				client.CONNECT(client.getCookie());
-				
+				// FIXME: Do not need this here. TCP connection established.
+				// Control given to user
+				// client.CONNECT(client.getCookie());
 			}
 		}
 		
@@ -113,16 +115,80 @@ public class ClientProgram {
 		 *************/
 		
 		
+		// Prompt user on how to log on
+		System.out.println("Type \"Log on\" to connect.");
+		System.out.println("Once logged on, you may log off by typing \"Log off\".");
+		System.out.println("To initiate chat, type: Chat Client-ID");
+		System.out.println("If you are in a chat, simply just type a message.");
 		
-		// Always running to catch responses
-		running = true;
-		while (running) {
-			// Prompt user on what to do next
-			response = in.nextLine();
-			
-			client.getOut().println(response);
-		}
+		// Create separate threads to handle incoming/outgoing messages
+		Thread sendMessage = new Thread (new Runnable() {
+			@Override
+			public void run() {
+				while (true) {
+					// Prompt user on what to do next
+					String response = in.nextLine();
+					
+					// CONNECT
+					if (response.equals("Log on")) {
+						client.CONNECT(client.getCookie());
+					}
+					// Log off
+					else if (response.equals("Log off")) {
+						client.getOut().println(AES.encrypt(response, client.getCK_A()));
+						client.setSessionID(null);
+					}
+					// CHAT_REQUEST
+					else if (response.matches("[Cc]hat [A-Za-z]+")) {
+						String[] tokens;
+						tokens = response.split("\\W+");
+						client.CHAT_REQUEST(tokens[1]);
+					}
+					// END_REQUEST
+					else if (response.matches("[Ee]nd [Cc]hat")) {
+						client.END_REQUEST(client.getSessionID());
+					}
+					// HISTORY_REQ
+					else if (response.matches("[Hh]istory [A-Za-z]+")) {
+						String[] tokens;
+						tokens = response.split("\\W+");
+						client.HISTORY_REQ(tokens[1]);
+					}
+					// CHAT
+					// FIXME: This needs fixing.
+					// response != null && client.inChat
+					else if (response != null){
+						client.CHAT(client.getSessionID(), response);
+					}
+				}
+			}
+		});
 		
+		Thread readMessage = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				// Receive response from server
+				while (true) {
+					try {
+						String response = client.getIn().readLine();
+						response = AES.decrypt(response, client.getCK_A());
+						System.out.println(response);
+						
+						if (response.matches("You are in session [0-9]+\\.")) {
+							String[] tokens = response.split("\\W+");
+							client.setSessionID(tokens[4]);
+						}
+						
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		});
+		
+		// Start send/read threads
+		sendMessage.start();
+		readMessage.start();
 	}
 
 	
@@ -140,20 +206,4 @@ public class ClientProgram {
 		System.out.println(decryptedString);
 	}
 	
-	// Function for allowing user to log on
-	private static void loggingOn() {
-		// User has to "log on"
-		boolean loggingOn = true;
-		String userInput;
-		try (Scanner scanner = new Scanner(System.in)){
-			while (loggingOn) {
-				userInput = scanner.nextLine();
-				
-				if (userInput.equals("Log on")) {
-					loggingOn = false;
-				}
-			}
-			scanner.close();
-		}
-	}
 }
