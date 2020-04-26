@@ -170,7 +170,7 @@ public class Client extends Thread {
 			try {
 				// Received takes in a line from BufferedReader
 				received = in.readLine();
-				
+					
 				// Decrypt message
 				received = AES.decrypt(received, this.CK_A);
 				
@@ -181,8 +181,11 @@ public class Client extends Thread {
 				if (received.equals("Log off")) {
 					this.online = false;
 					this.inChat = false;
-					this.setSessionID(null);
+					getIn().close();
+					getOut().close();
 					getClientSocket().close();
+					this.setSessionID(null);
+					break;
 				}
 				// Send CONNECTED
 				else if (received.equals(String.valueOf(this.cookie))){
@@ -247,7 +250,9 @@ public class Client extends Thread {
 				}
 				
 			} catch (IOException e) {
-				e.printStackTrace();
+				// FIXME: Commenting out. Should imply that the connection is closed.
+				// e.printStackTrace();
+				break;
 			}
 			
 		}

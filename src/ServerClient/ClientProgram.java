@@ -136,6 +136,15 @@ public class ClientProgram {
 					// Log off
 					else if (response.equals("Log off")) {
 						client.getOut().println(AES.encrypt(response, client.getCK_A()));
+						try {
+							client.getIn().close();
+							client.getOut().close();
+							client.getSocket().close();
+							client.getClientSocket().close();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+						
 						client.setSessionID(null);
 					}
 					// CHAT_REQUEST
@@ -180,7 +189,12 @@ public class ClientProgram {
 						}
 						
 					} catch (IOException e) {
-						e.printStackTrace();
+						// FIXME: If this exception is caught, this implies that the chat is closed and/or
+						// No connection found. 
+						// e.printStackTrace();
+						System.out.println("Connection has ended");
+						break;
+					} catch (NullPointerException e) {
 					}
 				}
 			}
