@@ -14,7 +14,6 @@ public class Server {
 	// For keeping list of clients
 	// and their respective SubID, SubKey, rand_Cookie from txt file
 	// Adding list of active users
-	// FIXME: Might not need to be static.
 	static ArrayList<Client> listClient;
 	static int indexOfSearch;
 	
@@ -25,8 +24,6 @@ public class Server {
 	
 	// Variables required for TCP connection
 	static ServerSocket socketTCP;		// One TCP Socket for incoming connections
-	// FIXME: Might not need clientSocket on Server. Have ArrayList<Client>
-	// that we may make Sockets on
 	static Socket clientSocket;			// One client socket for communication between server-client
 	static int tcpPort = 5380;			// Port of server to be passed to client for TCP connections
 	static PrintWriter out;				// For sending to clients
@@ -51,12 +48,12 @@ public class Server {
 		// Open UDP socket for connection
 		socketUDP = new DatagramSocket(udpPort);	// Open UDP Socket on port 5180.
 		// FIXME: Commented out for debugging. Take out comments when done.
-		// socketUDP.setSoTimeout(1000);			// Timeout for 1000ms
+		socketUDP.setSoTimeout(2000);				// Timeout for 2000ms
 		
 		// Open TCP socket for connection
 		socketTCP = new ServerSocket(tcpPort);		// Open TCP socket on tcpPort
 		// FIXME: Commented out for debugging.
-		// serverSocket.setSoTimeout(1000);			// Timeout for 1000ms on blocking
+		socketTCP.setSoTimeout(2000);				// Timeout for 2000ms on blocking
 													// operations.
 		
 		
@@ -81,8 +78,6 @@ public class Server {
 				// Extract data
 				clientRequest = data(buf).toString();
 				
-				// FIXME: For testing
-				System.out.println(clientRequest);
 				
 				// Search subscriber list for matching Client-ID
 				// if clientMessage is not null
@@ -155,8 +150,6 @@ public class Server {
 		// Create hash code for CK_A
 		XRES = new String(AES.encrypt(String.valueOf(rand) + String.valueOf(listClient.get(index).getKey()), 
 				String.valueOf(listClient.get(index).getKey())));
-		// FIXME: Testing response
-		System.out.println(AES.decrypt(XRES, String.valueOf(listClient.get(index).getKey())));
 		// Convert rand to bytes for CHALLENGE
 		String temp = String.valueOf(rand);
 		byte[] array = temp.getBytes();
@@ -192,7 +185,6 @@ public class Server {
 		listClient.get(indexOfSearch).setCookie(rand_cookie);
 		listClient.get(indexOfSearch).setTcpPort(port_number);
 		
-		// FIXME: May need to encrypt the other packets being sent here as well.
 		// Send over CK_A, encrypting it with subscriber's secretKey
 		// Future transfers will use CK_A
 		byte[] buffer = AES.encrypt(clientCK_A, String.valueOf(secretKey)).getBytes();
@@ -200,12 +192,12 @@ public class Server {
 		socketUDP.send(packet);
 		
 		// Send over rand_cookie for CONNECT
-		buffer = String.valueOf(rand_cookie).getBytes();
+		buffer = AES.encrypt(String.valueOf(rand_cookie), listClient.get(indexOfSearch).getCK_A()).getBytes();
 		packet = new DatagramPacket(buffer, buffer.length, address, portUDP);
 		socketUDP.send(packet);
 		
 		// Send over TCP port for client use
-		buffer = String.valueOf(port_number).getBytes();
+		buffer = AES.encrypt(String.valueOf(port_number), listClient.get(indexOfSearch).getCK_A()).getBytes();
 		packet = new DatagramPacket(buffer, buffer.length, address, portUDP);
 		socketUDP.send(packet);
 		
@@ -221,7 +213,7 @@ public class Server {
 		Thread thread = new Thread(listClient.get(index));
 		
 		// Add client to active clients, and start thread
-		listClient.get(index).online = true;
+		// listClient.get(index).online = true;
 		thread.start();
 	}
 	

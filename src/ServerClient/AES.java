@@ -62,7 +62,8 @@ public class AES {
 			return new String(cipher.doFinal(Base64.getDecoder().decode(strToDecrypt)));
 		}
 		catch (Exception e) {
-			System.out.println("Error while decrypting: " + e.toString());
+			// FIXME: Commenting out. Does not work well when logging off.
+			// System.out.println("Error while decrypting: " + e.toString());
 		}
 		return null;
 	}

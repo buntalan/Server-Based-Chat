@@ -16,7 +16,7 @@ public class ClientProgram {
 		// Set address to local host when testing
 		client.setAddress(InetAddress.getLocalHost());
 				
-		// FIXME: Setting custom Client_ID and key for testing
+		// Setting custom Client_ID and key for testing
 		// Normally A and 4 for testing
 		System.out.println("Enter clientID, then Key");
 		client.setClient_ID(in.nextLine());
@@ -45,9 +45,6 @@ public class ClientProgram {
 		client.getSocket().receive(client.getPacket());
 		received = Client.data(client.getBuf()).toString();
 		
-		// FIXME: For testing
-		System.out.println(received);
-		
 		// If client is not subscriber, will receive FFFF as response from server.
 		if (received.contentEquals("FFFF")) {
 			System.out.println("Client is not a subscriber.");
@@ -57,8 +54,6 @@ public class ClientProgram {
 			// Create and send out RESPONSE to CHALLENGE
 			String RES = new String(AES.encrypt(String.valueOf(received) + String.valueOf(client.getKey()), 
 					String.valueOf(client.getKey())));
-			// FIXME: Testing response
-			System.out.println(AES.decrypt(RES, String.valueOf(client.getKey())));
 			client.RESPONSE(client.getClient_ID(), RES, client.getPacket().getAddress(), client.getPacket().getPort());
 			
 			// Receive response for RESPONSE
@@ -68,7 +63,7 @@ public class ClientProgram {
 			client.getSocket().receive(client.getPacket());
 			received = Client.data(client.getBuf()).toString();
 			
-			// TODO: Set up branch for AUTH_SUCCESS and AUTH_FAIL
+			// Set up branch for AUTH_SUCCESS and AUTH_FAIL
 			if (received.equals("FAILED")) {
 				System.out.println("Authentication unsuccessful.");
 			}
@@ -80,7 +75,7 @@ public class ClientProgram {
 				client.setBuf(new byte[65535]);
 				client.setPacket(new DatagramPacket(client.getBuf(), client.getBuf().length));
 				client.getSocket().receive(client.getPacket());
-				received = Client.data(client.getBuf()).toString();
+				received = AES.decrypt(Client.data(client.getBuf()).toString(), client.getCK_A());
 				
 				// Set rand_cookie for client
 				client.setCookie(Integer.valueOf(received));
@@ -89,7 +84,7 @@ public class ClientProgram {
 				client.setBuf(new byte[65535]);
 				client.setPacket(new DatagramPacket(client.getBuf(), client.getBuf().length));
 				client.getSocket().receive(client.getPacket());
-				received = Client.data(client.getBuf()).toString();
+				received = AES.decrypt(Client.data(client.getBuf()).toString(), client.getCK_A());
 				
 				// Set TCP port for client
 				client.setTcpPort(Integer.valueOf(received));
@@ -101,12 +96,6 @@ public class ClientProgram {
 
 				// Print that TCP connection is successful
 				System.out.println("Connection successful.");
-				client.getOut().println(AES.encrypt("Working on this end!", client.getCK_A()));
-				
-				// Send out connect request to server
-				// FIXME: Do not need this here. TCP connection established.
-				// Control given to user
-				// client.CONNECT(client.getCookie());
 			}
 		}
 		
@@ -164,8 +153,6 @@ public class ClientProgram {
 						client.HISTORY_REQ(tokens[1]);
 					}
 					// CHAT
-					// FIXME: This needs fixing.
-					// response != null && client.inChat
 					else if (response != null){
 						client.CHAT(client.getSessionID(), response);
 					}
@@ -181,7 +168,11 @@ public class ClientProgram {
 					try {
 						String response = client.getIn().readLine();
 						response = AES.decrypt(response, client.getCK_A());
-						System.out.println(response);
+						
+						// Do not print when response null. Happens when logging off.
+						if (response != null) {
+							System.out.println(response);
+						}
 						
 						if (response.matches("You are in session [0-9]+\\.")) {
 							String[] tokens = response.split("\\W+");
@@ -189,12 +180,16 @@ public class ClientProgram {
 						}
 						
 					} catch (IOException e) {
-						// FIXME: If this exception is caught, this implies that the chat is closed and/or
+						// If this exception is caught, this implies that the chat is closed and/or
 						// No connection found. 
 						// e.printStackTrace();
 						System.out.println("Connection has ended");
 						break;
 					} catch (NullPointerException e) {
+						// If this exception is caught, this implies that the chat is closed and/or
+						// No connection found. 
+						System.out.println("Connection has ended");
+						break;
 					}
 				}
 			}
