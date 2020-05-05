@@ -211,9 +211,6 @@ public class Server {
 		
 		// Start new thread for this connection
 		Thread thread = new Thread(listClient.get(index));
-		
-		// Add client to active clients, and start thread
-		// listClient.get(index).online = true;
 		thread.start();
 	}
 	
