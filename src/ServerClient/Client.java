@@ -161,7 +161,6 @@ public class Client extends Thread {
 	public Client() throws Exception {
 	}
 	
-	// TODO: Finish this run() for when the program is called by thread
 	// This is the part that talks to the client from the server! 
 	@Override
 	public void run() {
@@ -170,19 +169,19 @@ public class Client extends Thread {
 			try {
 				// Received takes in a line from BufferedReader
 				received = in.readLine();
-				
+					
 				// Decrypt message
 				received = AES.decrypt(received, this.CK_A);
-				
-				// FIXME: Just testing this.
-				System.out.println(received);
 				
 				// Log off
 				if (received.equals("Log off")) {
 					this.online = false;
 					this.inChat = false;
-					this.setSessionID(null);
+					getIn().close();
+					getOut().close();
 					getClientSocket().close();
+					this.setSessionID(null);
+					break;
 				}
 				// Send CONNECTED
 				else if (received.equals(String.valueOf(this.cookie))){
@@ -202,7 +201,6 @@ public class Client extends Thread {
 					String[] tokens = received.split("\\W+");
 					
 					if (isFoundAndAvail(tokens[1])) {
-						// TODO: Add CHAT_STARTED
 						// Set inChat to true. The clientHandler is now set to online.
 						this.inChat = true;
 						
@@ -247,7 +245,9 @@ public class Client extends Thread {
 				}
 				
 			} catch (IOException e) {
-				e.printStackTrace();
+				// FIXME: Commenting out. Should imply that the connection is closed.
+				// e.printStackTrace();
+				break;
 			}
 			
 		}
@@ -282,7 +282,7 @@ public class Client extends Thread {
 	
 	/*CHAT FUNCTIONS*/
 	public void CHAT_REQUEST (String clientID) {
-		// TODO: Sent by client to the server to request a chat session with
+		// Sent by client to the server to request a chat session with clientID
 		// Caught bug "Chat" is supposed to be "Chat "
 		// Double check sent Strings
 		String temp = "Chat " + clientID;
@@ -290,14 +290,14 @@ public class Client extends Thread {
 	}
 	
 	public void END_REQUEST (String sessionID) {
-		// TODO: Sent by client A to server to request a chat session with Client B
+		// Sent by client A to server to request a chat session with Client B
 		// Turn off false flag.
 		this.inChat = false;
 		out.println(AES.encrypt("!!!! " + sessionID, this.CK_A));
 	}
 	
 	public void CHAT (String sessionID, String message) {
-		// TODO: Send message to client, carried by server
+		// Send message to client, carried by server
 		if (sessionID != null) {
 			// Create message template
 			String temp = sessionID + "@!" + getClient_ID() + "@!" + message;

@@ -1,7 +1,6 @@
 package ServerClient;
 
 import java.io.*;
-import java.net.*;
 
 public class History {
 	static FileInputStream in = null;
